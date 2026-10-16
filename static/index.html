@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CatalogFlow – Product Data Extraction</title>
+  <meta name="description" content="Upload product catalogs and brochure PDFs to instantly extract structured product, pricing, and packaging data with AI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface-2: #18181f;
+      --border: #2a2a38;
+      --border-glow: #4f4fff40;
+      --accent: #6366f1;
+      --accent-2: #818cf8;
+      --accent-glow: #6366f133;
+      --success: #22d3a4;
+      --warning: #f59e0b;
+      --error: #f87171;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --card-radius: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Background gradient orbs */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -40%;
+      left: -20%;
+      width: 80vw;
+      height: 80vw;
+      background: radial-gradient(circle, #6366f108 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -30%;
+      right: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, #818cf806 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Header ─── */
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(20px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px #6366f140;
+    }
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e2e8f0, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--accent-glow);
+      border: 1px solid #6366f160;
+      color: var(--accent-2);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ─── Main layout ─── */
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #e2e8f0 30%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 540px;
+      margin: 0 auto 32px;
+    }
+    .hero-chips {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .chip {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 20px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    /* ─── Upload area ─── */
+    .upload-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 40px;
+      margin-bottom: 32px;
+      transition: border-color 0.3s;
+    }
+    .upload-card:hover { border-color: #6366f160; }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 52px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+      filter: grayscale(0.3);
+    }
+    .drop-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .drop-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .file-selected {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-top: 20px;
+      padding: 14px 18px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .file-selected.visible { display: flex; }
+    .file-icon { font-size: 22px; }
+    .file-name { font-size: 0.875rem; font-weight: 500; flex: 1; word-break: break-all; }
+    .file-size { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+    .file-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+    .file-remove:hover { color: var(--error); }
+
+    .submit-btn {
+      width: 100%;
+      margin-top: 24px;
+      padding: 15px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 24px #6366f130;
+    }
+    .submit-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 32px #6366f145;
+    }
+    .submit-btn:active:not(:disabled) { transform: translateY(0); }
+    .submit-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ─── Status / progress ─── */
+    #status-area {
+      display: none;
+      margin-bottom: 32px;
+    }
+    #status-area.visible { display: block; }
+
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 28px 32px;
+    }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-label {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .progress-bar-track {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #818cf8);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.5s ease;
+      animation: progress-glow 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes progress-glow {
+      from { box-shadow: 0 0 4px #6366f140; }
+      to   { box-shadow: 0 0 12px #6366f180; }
+    }
+
+    .status-steps {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      opacity: 0.4;
+      transition: opacity 0.3s;
+    }
+    .step.active { opacity: 1; color: var(--text-dim); }
+    .step.done { opacity: 1; color: var(--success); }
+    .step-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* ─── Error state ─── */
+    .error-card {
+      background: var(--surface);
+      border: 1px solid #f8717130;
+      border-radius: var(--card-radius);
+      padding: 24px 28px;
+      margin-bottom: 32px;
+      display: none;
+    }
+    .error-card.visible { display: block; }
+    .error-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--error);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .error-msg { font-size: 0.85rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+    /* ─── Results ─── */
+    #results-area { display: none; }
+    #results-area.visible { display: block; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .results-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .results-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .meta-pill {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-dim);
+    }
+    .meta-pill.success { border-color: #22d3a440; color: var(--success); background: #22d3a410; }
+    .meta-pill.warning { border-color: #f59e0b40; color: var(--warning); background: #f59e0b10; }
+
+    /* Summary grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.3s;
+    }
+    .stat-card:hover { border-color: #6366f160; }
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent-2);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 500;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1px;
+    }
+    .tab-btn {
+      padding: 9px 18px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      border-radius: 6px 6px 0 0;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--surface-2); }
+    .tab-btn.active { color: var(--accent-2); border-bottom-color: var(--accent); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Vendor card */
+    .vendor-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 24px 28px;
+      margin-bottom: 20px;
+    }
+    .vendor-card h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    .vendor-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .field-item {}
+    .field-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .field-value { font-size: 0.9rem; color: var(--text); font-weight: 500; }
+    .field-empty { color: var(--text-muted); font-style: italic; }
+
+    /* Product cards */
+    .products-list { display: flex; flex-direction: column; gap: 16px; }
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    .product-card:hover { border-color: #6366f150; }
+
+    .product-header {
+      padding: 18px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .product-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--accent-glow);
+      border: 1px solid #6366f140;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-2);
+      flex-shrink: 0;
+    }
+    .product-info { flex: 1; min-width: 0; }
+    .product-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .product-sku {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .confidence-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .conf-high { background: #22d3a415; color: var(--success); border: 1px solid #22d3a430; }
+    .conf-med  { background: #f59e0b15; color: var(--warning); border: 1px solid #f59e0b30; }
+    .conf-low  { background: #f8717115; color: var(--error);   border: 1px solid #f8717130; }
+    .chevron { color: var(--text-muted); transition: transform 0.25s; margin-left: auto; }
+    .product-card.open .chevron { transform: rotate(180deg); }
+
+    .product-body {
+      display: none;
+      padding: 0 24px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .product-card.open .product-body { display: block; }
+
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: 16px 0 10px;
+    }
+    .offers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .offer-item {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .warnings-list { margin-top: 12px; }
+    .warning-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--warning);
+      margin-bottom: 6px;
+    }
+    .warning-item::before { content: '⚠'; flex-shrink: 0; }
+
+    /* Raw JSON tab */
+    .json-viewer {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.7;
+      color: var(--text-dim);
+      overflow-x: auto;
+      white-space: pre;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a4a60; }
+
+    /* Reset btn */
+    .reset-btn {
+      padding: 8px 20px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      background: var(--surface-2);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .reset-btn:hover { color: var(--text); border-color: #6366f160; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      header { padding: 16px 20px; }
+      main { padding: 40px 16px 60px; }
+      .upload-card { padding: 24px 20px; }
+      .drop-zone { padding: 36px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="/">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">CatalogFlow</span>
+    </a>
+    <span class="badge">AI-Powered</span>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <h1>Turn Brochures Into<br/>Structured Data</h1>
+      <p>Upload any product catalog or quotation PDF. CatalogFlow extracts structured product, pricing, and packaging records — instantly.</p>
+      <div class="hero-chips">
+        <span class="chip">📦 Product Master Data</span>
+        <span class="chip">💰 Commercial Offers</span>
+        <span class="chip">📐 Packaging & Logistics</span>
+        <span class="chip">🔍 Source Evidence</span>
+      </div>
+    </section>
+
+    <!-- Upload form -->
+    <div class="upload-card" id="upload-card">
+      <form id="upload-form">
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="file-input" accept=".pdf" />
+          <span class="drop-icon">📄</span>
+          <div class="drop-title">Drop your PDF here</div>
+          <div class="drop-subtitle">or click to browse — catalogs and quotations supported</div>
+        </div>
+        <div class="file-selected" id="file-selected">
+          <span class="file-icon">📄</span>
+          <span class="file-name" id="file-name"></span>
+          <span class="file-size" id="file-size"></span>
+          <button type="button" class="file-remove" id="file-remove" title="Remove">✕</button>
+        </div>
+        <button type="submit" class="submit-btn" id="submit-btn" disabled>
+          Extract Product Data
+        </button>
+      </form>
+    </div>
+
+    <!-- Status -->
+    <div id="status-area">
+      <div class="status-card">
+        <div class="progress-header">
+          <div class="spinner"></div>
+          <div class="progress-label" id="progress-label">Uploading document…</div>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-bar"></div>
+        </div>
+        <div class="status-steps">
+          <div class="step" id="step-upload">
+            <div class="step-dot"></div>Uploading PDF
+          </div>
+          <div class="step" id="step-parse">
+            <div class="step-dot"></div>Parsing document structure
+          </div>
+          <div class="step" id="step-classify">
+            <div class="step-dot"></div>Classifying document type
+          </div>
+          <div class="step" id="step-extract">
+            <div class="step-dot"></div>Extracting product data with AI
+          </div>
+          <div class="step" id="step-validate">
+            <div class="step-dot"></div>Validating and structuring results
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-card" id="error-card">
+      <div class="error-title">⚠ Extraction Failed</div>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="results-area">
+      <div class="results-header">
+        <div class="results-title">Extraction Results</div>
+        <div class="results-meta" id="results-meta"></div>
+        <button class="reset-btn" id="reset-btn">Extract Another</button>
+      </div>
+
+      <!-- Summary stats -->
+      <div class="summary-grid" id="summary-grid"></div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-products" data-tab="panel-products">Products</button>
+        <button class="tab-btn" id="tab-vendor" data-tab="panel-vendor">Vendor</button>
+        <button class="tab-btn" id="tab-raw" data-tab="panel-raw">Raw JSON</button>
+      </div>
+
+      <div class="tab-panel active" id="panel-products">
+        <div class="products-list" id="products-list"></div>
+      </div>
+      <div class="tab-panel" id="panel-vendor">
+        <div class="vendor-card">
+          <h3>Vendor Information</h3>
+          <div class="vendor-fields" id="vendor-fields"></div>
+        </div>
+      </div>
+      <div class="tab-panel" id="panel-raw">
+        <div class="json-viewer" id="json-viewer"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ─── State ───────────────────────────────────────────────────────────────
+    let selectedFile = null;
+    let lastResult = null;
+
+    // ─── Elements ────────────────────────────────────────────────────────────
+    const dropZone    = document.getElementById('drop-zone');
+    const fileInput   = document.getElementById('file-input');
+    const fileSelected = document.getElementById('file-selected');
+    const fileName    = document.getElementById('file-name');
+    const fileSize    = document.getElementById('file-size');
+    const fileRemove  = document.getElementById('file-remove');
+    const submitBtn   = document.getElementById('submit-btn');
+    const uploadForm  = document.getElementById('upload-form');
+    const uploadCard  = document.getElementById('upload-card');
+    const statusArea  = document.getElementById('status-area');
+    const errorCard   = document.getElementById('error-card');
+    const errorMsg    = document.getElementById('error-msg');
+    const resultsArea = document.getElementById('results-area');
+    const resetBtn    = document.getElementById('reset-btn');
+
+    // ─── File selection ───────────────────────────────────────────────────────
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function setFile(file) {
+      if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+        alert('Please select a PDF file.');
+        return;
+      }
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileSize.textContent = formatBytes(file.size);
+      fileSelected.classList.add('visible');
+      submitBtn.disabled = false;
+    }
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+
+    fileRemove.addEventListener('click', () => {
+      selectedFile = null;
+      fileInput.value = '';
+      fileSelected.classList.remove('visible');
+      submitBtn.disabled = true;
+    });
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+
+    // ─── Progress simulation ──────────────────────────────────────────────────
+    const steps = [
+      { id: 'step-upload',   label: 'Uploading PDF…',                pct: 15 },
+      { id: 'step-parse',    label: 'Parsing document structure…',   pct: 35 },
+      { id: 'step-classify', label: 'Classifying document type…',    pct: 55 },
+      { id: 'step-extract',  label: 'Extracting product data…',      pct: 80 },
+      { id: 'step-validate', label: 'Validating and structuring…',   pct: 95 },
+    ];
+    let stepIdx = 0;
+    let stepTimer = null;
+
+    function progressLabel(txt) {
+      document.getElementById('progress-label').textContent = txt;
+    }
+    function progressPct(p) {
+      document.getElementById('progress-bar').style.width = p + '%';
+    }
+    function markStep(id, state) {
+      const el = document.getElementById(id);
+      el.classList.remove('active', 'done');
+      if (state) el.classList.add(state);
+    }
+
+    function startProgress() {
+      stepIdx = 0;
+      steps.forEach(s => markStep(s.id, null));
+      progressPct(5);
+      advanceStep();
+    }
+
+    function advanceStep() {
+      if (stepIdx >= steps.length) return;
+      const s = steps[stepIdx];
+      if (stepIdx > 0) markStep(steps[stepIdx - 1].id, 'done');
+      markStep(s.id, 'active');
+      progressLabel(s.label);
+      progressPct(s.pct);
+      stepIdx++;
+      const delay = stepIdx === 1 ? 800 : 3500 + Math.random() * 2000;
+      stepTimer = setTimeout(advanceStep, delay);
+    }
+
+    function completeProgress() {
+      if (stepTimer) clearTimeout(stepTimer);
+      steps.forEach(s => markStep(s.id, 'done'));
+      progressLabel('Extraction complete ✓');
+      progressPct(100);
+    }
+
+    // ─── Form submit ──────────────────────────────────────────────────────────
+    uploadForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!selectedFile) return;
+
+      // Reset UI
+      errorCard.classList.remove('visible');
+      resultsArea.classList.remove('visible');
+      statusArea.classList.add('visible');
+      submitBtn.disabled = true;
+      startProgress();
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch('/api/extract', { method: 'POST', body: formData });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Extraction failed');
+        }
+
+        completeProgress();
+        setTimeout(() => {
+          statusArea.classList.remove('visible');
+          lastResult = data;
+          renderResults(data);
+          resultsArea.classList.add('visible');
+        }, 700);
+
+      } catch (err) {
+        if (stepTimer) clearTimeout(stepTimer);
+        statusArea.classList.remove('visible');
+        errorMsg.textContent = err.message;
+        errorCard.classList.add('visible');
+        submitBtn.disabled = false;
+      }
+    });
+
+    // ─── Reset ────────────────────────────────────────────────────────────────
+    resetBtn.addEventListener('click', () => {
+      resultsArea.classList.remove('visible');
+      errorCard.classList.remove('visible');
+      selectedFile = null;
+      fileInput.value = '';
+      fileSelected.classList.remove('visible');
+      submitBtn.disabled = true;
+    });
+
+    // ─── Tabs ─────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ─── Render results ───────────────────────────────────────────────────────
+    function renderResults(data) {
+      // Reset tabs to first
+      document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+      document.querySelectorAll('.tab-panel').forEach((p, i) => p.classList.toggle('active', i === 0));
+
+      // Meta pills
+      const meta = document.getElementById('results-meta');
+      meta.innerHTML = '';
+      const docType = data.document_type || 'unknown';
+      addPill(meta, '📄 ' + capitalize(docType), '');
+      if (data.page_count) addPill(meta, data.page_count + ' pages', '');
+      const valid = data.ppv_valid !== undefined ? data.ppv_valid : data.vlm_valid;
+      if (valid !== undefined && valid !== null) {
+        addPill(meta, valid ? '✓ Validated' : '⚠ Review needed', valid ? 'success' : 'warning');
+      }
+
+      // Summary stats
+      const products = data.products || [];
+      const grid = document.getElementById('summary-grid');
+      grid.innerHTML = '';
+      addStat(grid, products.length, 'Products');
+      addStat(grid, data.page_count || 0, 'Pages');
+      const withPrice = products.filter(p => p.offers && p.offers.length && p.offers[0].price_amount).length;
+      addStat(grid, withPrice, 'With Pricing');
+      const withPkg = products.filter(p => p.packaging && p.packaging.length).length;
+      addStat(grid, withPkg, 'With Packaging');
+
+      // Products list
+      const list = document.getElementById('products-list');
+      list.innerHTML = '';
+      if (!products.length) {
+        list.innerHTML = '<div style="color:var(--text-muted);font-size:0.9rem;padding:24px 0;text-align:center;">No products were extracted from this document.</div>';
+      } else {
+        products.forEach((p, i) => {
+          list.appendChild(buildProductCard(p, i + 1));
+        });
+      }
+
+      // Vendor
+      const vendor = data.vendor || {};
+      const vf = document.getElementById('vendor-fields');
+      vf.innerHTML = '';
+      const vendorFields = [
+        ['Vendor Name', vendor.vendor_name],
+        ['Legal Name', vendor.legal_name],
+        ['Website', vendor.website],
+        ['Email', vendor.email],
+        ['Phone', vendor.phone],
+        ['Address', vendor.address],
+        ['Country', vendor.country_code],
+        ['Currency', vendor.currency_code],
+        ['Incoterm', vendor.incoterm_code],
+        ['Payment Terms', vendor.payment_terms],
+      ];
+      vendorFields.forEach(([label, value]) => {
+        const d = document.createElement('div');
+        d.className = 'field-item';
+        d.innerHTML = `<div class="field-label">${label}</div><div class="field-value ${value ? '' : 'field-empty'}">${value || '—'}</div>`;
+        vf.appendChild(d);
+      });
+
+      // Raw JSON
+      document.getElementById('json-viewer').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function addPill(container, text, cls) {
+      const span = document.createElement('span');
+      span.className = 'meta-pill' + (cls ? ' ' + cls : '');
+      span.textContent = text;
+      container.appendChild(span);
+    }
+
+    function addStat(container, value, label) {
+      const div = document.createElement('div');
+      div.className = 'stat-card';
+      div.innerHTML = `<div class="stat-value">${value}</div><div class="stat-label">${label}</div>`;
+      container.appendChild(div);
+    }
+
+    function capitalize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function confClass(c) {
+      if (c >= 0.75) return 'conf-high';
+      if (c >= 0.45) return 'conf-med';
+      return 'conf-low';
+    }
+
+    function buildProductCard(p, num) {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+
+      const conf = p.confidence ?? 0;
+      const confLabel = conf >= 0.75 ? 'High' : conf >= 0.45 ? 'Medium' : 'Low';
+
+      card.innerHTML = `
+        <div class="product-header">
+          <div class="product-num">${num}</div>
+          <div class="product-info">
+            <div class="product-name">${p.vendor_product_name || p.variant || 'Unknown product'}</div>
+            <div class="product-sku">${p.vendor_sku ? 'SKU: ' + p.vendor_sku : 'No SKU'}</div>
+          </div>
+          <div class="confidence-badge ${confClass(conf)}">${(conf * 100).toFixed(0)}% ${confLabel}</div>
+          <div class="chevron">▼</div>
+        </div>
+        <div class="product-body">
+          ${renderOffers(p.offers)}
+          ${renderPackaging(p.packaging)}
+          ${renderSource(p.source)}
+          ${renderWarnings(p.warnings)}
+        </div>
+      `;
+
+      card.querySelector('.product-header').addEventListener('click', () => {
+        card.classList.toggle('open');
+      });
+
+      return card;
+    }
+
+    function formatPrice(amount, currency) {
+      if (amount == null || amount === '') return null;
+      const num = Number(amount);
+      const formatted = isNaN(num) ? amount : num.toLocaleString('en-IN');
+      const curr = (currency || 'INR').toUpperCase();
+      if (curr === 'INR' || curr === 'RS' || curr === 'RS.') return `₹ ${formatted}`;
+      return `${curr} ${formatted}`;
+    }
+
+    function renderOffers(offers) {
+      if (!offers || !offers.length) return '';
+      const items = offers.map(o => `
+        <div class="offer-item">
+          ${fieldRow('Price', formatPrice(o.price_amount, o.currency_code))}
+          ${fieldRow('MOQ', o.minimum_quantity)}
+          ${fieldRow('Incoterm', o.incoterm_code)}
+          ${fieldRow('Payment', o.payment_terms)}
+        </div>
+      `).join('');
+      return `<div class="section-title">Commercial Offers</div><div class="offers-grid">${items}</div>`;
+    }
+
+    function renderPackaging(packaging) {
+      if (!packaging || !packaging.length) return '';
+      const items = packaging.map(pk => `
+        <div class="offer-item">
+          ${fieldRow('L×W×H', dims(pk))}
+          ${fieldRow('CBM', pk.cbm)}
+          ${fieldRow('40HQ Qty', pk.container_40hq_quantity)}
+        </div>
+      `).join('');
+      return `<div class="section-title">Packaging & Logistics</div><div class="offers-grid">${items}</div>`;
+    }
+
+    function dims(pk) {
+      if (pk.length || pk.width || pk.height) {
+        return [pk.length, pk.width, pk.height].map(v => v ?? '?').join(' × ') + (pk.dimension_uom_code ? ' ' + pk.dimension_uom_code : '');
+      }
+      return null;
+    }
+
+    function renderSource(src) {
+      if (!src) return '';
+      return `
+        <div class="section-title">Source Evidence</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);">
+          ${src.page != null ? '<span style="color:var(--text-dim);margin-right:12px;">Page ' + src.page + '</span>' : ''}
+          ${src.raw_text ? '<span style="font-family:\'JetBrains Mono\',monospace;color:var(--text-muted);">"' + escHtml(src.raw_text.slice(0, 180)) + (src.raw_text.length > 180 ? '…' : '') + '"</span>' : ''}
+        </div>
+      `;
+    }
+
+    function renderWarnings(warnings) {
+      if (!warnings || !warnings.length) return '';
+      const items = warnings.map(w => `<div class="warning-item">${escHtml(w)}</div>`).join('');
+      return `<div class="warnings-list">${items}</div>`;
+    }
+
+    function fieldRow(label, value) {
+      return `<div class="field-item">
+        <div class="field-label">${label}</div>
+        <div class="field-value ${value != null && value !== '' ? '' : 'field-empty'}">${value != null && value !== '' ? escHtml(String(value)) : '—'}</div>
+      </div>`;
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>
